@@ -1,4 +1,5 @@
 <?php
+namespace App\Controllers;
 
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -40,16 +41,13 @@ class AccountController{
         $stmt = $this->mysqli->prepare("INSERT INTO users(name,surname,password,nickname) VALUES (?,?,?,?)");
         $stmt->bind_param("ssss",$name,$surname,$pass,$nick);
         if($stmt->execute()){
-            $response->getBody()->write(json_encode(['succes' => 'Account succesfully registred']));
+            $response->getBody()->write(json_encode(['succes' => 'Account succesfully registred'],$account));
             return $response->withHeader("Content-Type","application/json")->withStatus(200);
         } else {
             $response->getBody()->write(json_encode(['error' => 'Registretion failed']));
             return $response->withHeader("Content-Type","application/json")->withStatus(500);
         }
 
-        
-        $response->getBody()->write(json_encode($account));
-        return $response->withHeader("Content-type", "application/json")->withStatus(200);
     }
 
     public function login(Request $request, Response $response,$args){
@@ -68,13 +66,37 @@ class AccountController{
         $result = $stmt->get_result();
         $account = $result->fetch_assoc();
 
+        $accountId = $account["id"];
 
         if($account === NULL){
             $response->getBody()->write(json_encode(['error' => 'incorrect credentials']));
             return $response->withHeader("Content-Type","application/json")->withStatus(401);
         } 
 
-        $response->getBody()->write(json_encode(['success' => 'Account succesfully logged']));
+        $response->getBody()->write(json_encode([
+            'success' => 'Account succesfully logged',
+            'id' => $accountId,
+            'nickname' => $nick,
+            'password' => $pass
+        ]));
         return $response->withHeader("Content-Type","application/json")->withStatus(200);
+    }
+
+    public function getAccount(Request $request, Response $response, $args){
+        $id = $args["id"];
+
+        $stmt = $this->mysqli->prepare("SELECT * FROM users WHERE id = ? ");
+        $stmt->bind_param("i",$id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $account = $result->fetch_assoc();
+
+        if($account === NULL){
+            $response->getBody()->write(json_encode(['error' => "Account doesn't exist"]));
+            return $response->withHeader("Content-Type","application/json")->withStatus(404);
+        }
+
+        $response->getBody()->write(json_encode($account));
+        return $response->withHeader("Content-Type", "application/json")->withStatus(200);
     }
 }
